@@ -9,18 +9,22 @@ export const SessionSchema = z.object({
 });
 
 export const AuthUserSchema = z.object({
-  id: z.string().uuid(),
-  email: z.string().email(),
-  name: z.string(),
+  id: z.string(),
+  email: z.string().nullable().optional(),
+  name: z.string().nullable().optional(),
 });
 
-export const AuthCallbackResponseSchema = z.object({
+export const AuthResponseSchema = z.object({
   user: AuthUserSchema,
   session: SessionSchema,
 });
 
+// legacy alias
+export const AuthCallbackResponseSchema = AuthResponseSchema;
+
 export type Session = z.infer<typeof SessionSchema>;
 export type AuthUser = z.infer<typeof AuthUserSchema>;
+export type AuthResponse = z.infer<typeof AuthResponseSchema>;
 
 // ─── Profile ───────────────────────────────────────────────────────────────
 

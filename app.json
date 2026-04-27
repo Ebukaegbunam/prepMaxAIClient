@@ -9,7 +9,8 @@
     "scheme": "prepmax",
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.ebukaegbunam.prepmax"
+      "bundleIdentifier": "com.ebukaegbunam.prepmax",
+      "usesAppleSignIn": true
     },
     "android": {
       "adaptiveIcon": {
@@ -24,6 +25,7 @@
     "plugins": [
       "expo-router",
       "expo-secure-store",
+      "expo-apple-authentication",
       [
         "expo-camera",
         {
@@ -35,7 +37,8 @@
         {
           "color": "#3B82F6"
         }
-      ]
+      ],
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true

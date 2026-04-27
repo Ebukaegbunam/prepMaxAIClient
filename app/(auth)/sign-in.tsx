@@ -1,10 +1,14 @@
-import { View, Text, Pressable } from 'react-native';
+import { View, Text, Alert, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Rect, Path, Defs, LinearGradient, Stop, Circle } from 'react-native-svg';
+import Svg, { Rect, Path, Defs, LinearGradient, Stop } from 'react-native-svg';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
+import * as AppleAuthentication from 'expo-apple-authentication';
 import { Dumbbell, UtensilsCrossed, Camera, Sparkles } from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
-import { colors, typography, spacing, radius } from '@/constants/theme';
+import { colors, typography, radius, elevation } from '@/constants/theme';
 import { useHaptic } from '@/lib/haptics';
+import { signInWithGoogle, signInWithApple } from '@/lib/auth';
+import { useState } from 'react';
 
 // PrepMax logo: bold geometric P + lightning bolt accent.
 // Source: docs/designs/screens/signin.jsx PrepMaxLogo
@@ -51,9 +55,45 @@ function GoogleG() {
   );
 }
 
-// TODO(phase-auth): wire onPress to GET /auth/google/start → expo-web-browser → POST /auth/google/callback
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
 export default function SignIn() {
   const haptic = useHaptic();
+  const [loading, setLoading] = useState<'google' | 'apple' | null>(null);
+  const googleScale = useSharedValue(1);
+  const googleStyle = useAnimatedStyle(() => ({ transform: [{ scale: googleScale.value }] }));
+
+  const handleGoogle = async () => {
+    if (loading) return;
+    haptic('buttonPress');
+    setLoading('google');
+    try {
+      await signInWithGoogle();
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Something went wrong';
+      Alert.alert('Sign-in failed', msg);
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  const handleApple = async () => {
+    if (loading) return;
+    haptic('buttonPress');
+    setLoading('apple');
+    try {
+      await signInWithApple();
+    } catch (e: unknown) {
+      if ((e as { code?: string }).code === 'ERR_REQUEST_CANCELED') {
+        setLoading(null);
+        return;
+      }
+      const msg = e instanceof Error ? e.message : 'Something went wrong';
+      Alert.alert('Sign-in failed', msg);
+    } finally {
+      setLoading(null);
+    }
+  };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.neutral[0] }}>
@@ -186,39 +226,45 @@ export default function SignIn() {
 
       {/* Sign-in actions */}
       <View style={{ paddingHorizontal: 24, paddingBottom: 32, zIndex: 1 }}>
-        <Pressable
-          onPress={() => {
-            haptic('buttonPress');
-            // TODO(phase-auth): implement
-          }}
-          style={({ pressed }) => ({
-            width: '100%',
-            height: 52,
-            borderRadius: 14,
-            backgroundColor: colors.neutral[0],
-            borderWidth: 1,
-            borderColor: colors.neutral[200],
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 10,
-            marginBottom: 16,
-            opacity: pressed ? 0.7 : 1,
-            transform: [{ scale: pressed ? 0.97 : 1 }],
-          })}
+        {/* Google */}
+        <AnimatedPressable
+          onPress={handleGoogle}
+          disabled={loading !== null}
+          onPressIn={() => { googleScale.value = withSpring(0.97, { damping: 30, stiffness: 400 }); }}
+          onPressOut={() => { googleScale.value = withSpring(1, { damping: 30, stiffness: 400 }); }}
+          style={[
+            googleStyle,
+            {
+              width: '100%',
+              height: 52,
+              borderRadius: 14,
+              backgroundColor: colors.neutral[0],
+              borderWidth: 1,
+              borderColor: colors.neutral[200],
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 10,
+              marginBottom: 12,
+              opacity: loading === 'google' ? 0.6 : 1,
+              ...elevation[2],
+            },
+          ]}
         >
           <GoogleG />
-          <Text
-            style={{
-              fontSize: 16,
-              fontWeight: '600',
-              color: colors.neutral[800],
-              letterSpacing: -0.08,
-            }}
-          >
-            Continue with Google
+          <Text style={{ fontSize: 16, fontWeight: '600', color: colors.neutral[800], letterSpacing: -0.08 }}>
+            {loading === 'google' ? 'Signing in…' : 'Continue with Google'}
           </Text>
-        </Pressable>
+        </AnimatedPressable>
+
+        {/* Apple — only renders on iOS where Sign In with Apple is available */}
+        <AppleAuthentication.AppleAuthenticationButton
+          buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+          buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+          cornerRadius={14}
+          style={{ width: '100%', height: 52, marginBottom: 20 }}
+          onPress={handleApple}
+        />
 
         <Text
           style={{
