@@ -1,6 +1,7 @@
-import type { ViewStyle } from 'react-native';
+import type { ViewStyle, TextStyle } from 'react-native';
 
 // ─── Colors ────────────────────────────────────────────────────────────────
+// Source of truth: docs/designs/theme.js (PrepAITheme)
 
 export const colors = {
   brand: {
@@ -10,13 +11,13 @@ export const colors = {
     300: '#93C5FD',
     400: '#60A5FA',
     500: '#3B82F6',   // PRIMARY — buttons, key accents
-    600: '#2563EB',   // pressed states, headlines
+    600: '#2563EB',   // pressed states, headlines, ghost button text
     700: '#1D4ED8',   // high-emphasis text on light blue
     900: '#1E3A8A',   // dark accents, charts
   },
   neutral: {
     0: '#FFFFFF',
-    50: '#F8FAFC',    // alternate surface, scrim
+    50: '#F8FAFC',    // alternate surface, page background
     100: '#F1F5F9',   // muted surface, input fields, dividers
     200: '#E2E8F0',   // subtle borders, separators
     300: '#CBD5E1',   // disabled controls, low-emphasis borders
@@ -25,16 +26,16 @@ export const colors = {
     600: '#475569',   // body text on muted surfaces
     700: '#334155',   // default body text
     800: '#1E293B',   // headlines, emphasized labels
-    900: '#0F172A',   // hero numerals
+    900: '#0F172A',   // hero numerals (weight, calories, etc.)
   },
   success: {
     50: '#ECFDF5',
-    500: '#10B981',   // workout complete, on-track trend, set marked done
+    500: '#10B981',   // workout complete, on-track, set marked done
     700: '#047857',   // high-emphasis success text
   },
   warning: {
     50: '#FFFBEB',
-    500: '#F59E0B',   // approaching limits, calorie warnings
+    500: '#F59E0B',   // approaching limits, alerts
     700: '#B45309',
   },
   danger: {
@@ -51,7 +52,7 @@ export const spacing = {
   1: 4,
   2: 8,
   3: 12,
-  4: 16,   // DEFAULT padding for cards, screen edges
+  4: 16,   // DEFAULT — card padding, screen horizontal padding
   5: 20,
   6: 24,   // section gaps
   8: 32,
@@ -65,65 +66,81 @@ export const spacing = {
 export const radius = {
   sm: 8,     // buttons, chips, small inputs
   md: 12,    // cards (default)
-  lg: 16,    // sheets, modals
+  lg: 16,    // sheets, modals, large cards
   xl: 24,    // hero cards, photo containers
-  full: 9999, // pill buttons, avatars
+  full: 9999, // pill buttons, avatars, dots
 } as const;
 
 // ─── Typography ────────────────────────────────────────────────────────────
+// Sizes from docs/designs/theme.js — more compact than initial estimate.
+// SF Pro on iOS (system font), Inter on Android.
 
 export const typography = {
   display: {
     fontSize: 40,
-    lineHeight: 48,
+    lineHeight: 44,
     fontWeight: '700' as const,
+    letterSpacing: -0.8,     // -0.02em at 40px
   },
   title1: {
     fontSize: 28,
-    lineHeight: 34,
+    lineHeight: 32,
     fontWeight: '700' as const,
+    letterSpacing: -0.28,    // -0.01em at 28px
   },
   title2: {
     fontSize: 22,
     lineHeight: 28,
     fontWeight: '600' as const,
+    letterSpacing: -0.11,    // -0.005em at 22px
   },
   title3: {
-    fontSize: 18,
-    lineHeight: 24,
+    fontSize: 17,
+    lineHeight: 22,
     fontWeight: '600' as const,
   },
   body: {
-    fontSize: 16,
-    lineHeight: 22,
+    fontSize: 15,
+    lineHeight: 20,
     fontWeight: '400' as const,
   },
   bodyStrong: {
-    fontSize: 16,
-    lineHeight: 22,
+    fontSize: 15,
+    lineHeight: 20,
     fontWeight: '600' as const,
   },
   callout: {
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 13,
+    lineHeight: 17,
     fontWeight: '500' as const,
   },
   footnote: {
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 11,
+    lineHeight: 14,
     fontWeight: '500' as const,
+    letterSpacing: 0.22,     // 0.02em at 11px
   },
 } as const;
 
-// Tabular numerals for any numeric display — numbers never jitter as they update.
-export const tabularNumerals = {
-  fontVariant: ['tabular-nums'] as const,
+// Tabular numerals — apply to any numeric display so numbers never jitter.
+export const tabularNumerals: Pick<TextStyle, 'fontVariant'> = {
+  fontVariant: ['tabular-nums'],
 };
 
+// ─── Hero numerals (large numbers in set logger, calorie display, etc.) ────
+// These get additional tighter letter spacing beyond the base type scale.
+
+export const heroNumeral = {
+  large: { letterSpacing: -1.92 },   // -0.03em at 64px
+  medium: { letterSpacing: -0.64 },  // -0.02em at 32px
+  small: { letterSpacing: -0.22 },   // -0.01em at 22px
+} as const;
+
 // ─── Elevation ─────────────────────────────────────────────────────────────
+// Uses the 0.5px hairline border trick from the design mockup for crispness.
 
 export const elevation = {
-  0: {} as ViewStyle,   // flat surfaces, dividers
+  0: {} as ViewStyle,
   1: {
     shadowColor: '#0F172A',
     shadowOffset: { width: 0, height: 1 },
@@ -134,14 +151,14 @@ export const elevation = {
   2: {
     shadowColor: '#0F172A',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.06,
     shadowRadius: 12,
     elevation: 4,
   } as ViewStyle,
   3: {
     shadowColor: '#0F172A',
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.12,
+    shadowOpacity: 0.10,
     shadowRadius: 24,
     elevation: 8,
   } as ViewStyle,
@@ -151,17 +168,19 @@ export const elevation = {
 
 export const motion = {
   spring: {
-    default: { damping: 20, stiffness: 200 } as const,       // sheet open
-    snappy: { damping: 30, stiffness: 400 } as const,        // button press
-    gentle: { damping: 15, stiffness: 150 } as const,        // modal open
+    default: { damping: 20, stiffness: 200 } as const,   // sheet open
+    snappy: { damping: 30, stiffness: 400 } as const,    // button press
+    gentle: { damping: 15, stiffness: 150 } as const,    // modal
+    chart: { damping: 25, stiffness: 250 } as const,     // stat ring fill
   },
+  // Cubic bezier equivalent: cubic-bezier(0.2, 0.8, 0.2, 1) from design mockup
   duration: {
-    micro: 100,    // button press, tap feedback
-    fast: 150,     // tab change crossfade
-    normal: 200,   // list item enter, set logged
-    medium: 250,   // modal open
-    slow: 300,     // sheet open, progress arc
-    chart: 400,    // chart entrance, number change
+    micro: 100,
+    fast: 150,
+    normal: 220,
+    medium: 320,
+    slow: 600,
+    chart: 700,
   },
 } as const;
 
@@ -169,28 +188,29 @@ export const motion = {
 
 export const layout = {
   screenPadding: 16,      // always 16, never more, never less
-  cardPadding: 16,        // same number — visual rhythm
-  cardGap: 16,            // vertical gap between cards
-  sectionGap: 24,         // vertical gap between sections
-  ctaTopMargin: 32,       // before a screen-level CTA
-  tabBarHeight: 56,       // tab bar height (plus safe area inset)
+  cardPadding: 16,
+  cardGap: 8,             // gap between cards in a list (from designs: 8px)
+  sectionGap: 12,         // gap between sections (padding top on section divs)
+  tabBarHeight: 56,
   minTouchTarget: 44,     // Apple HIG minimum
-  gymTouchTarget: 56,     // set logger buttons — bigger for gym hands
+  gymTouchTarget: 56,     // set logger — bigger for gym hands/gloves
+  bigStepBtn: 52,         // weight +/- stepper buttons in set logger
 } as const;
 
 // ─── Icon sizes ────────────────────────────────────────────────────────────
 
 export const iconSize = {
-  inline: 16,
-  default: 20,
-  nav: 24,       // tabs/headers
-  emptyState: 32,
-  illustration: 48,
+  inline: 11,
+  sm: 14,
+  default: 16,
+  md: 18,
+  nav: 20,           // used in tab bar via Lucide
+  header: 22,
+  emptyState: 48,
 } as const;
 
-// ─── Haptic types ──────────────────────────────────────────────────────────
-// Mappings live in src/lib/haptics/index.ts.
-// Centralized here for documentation purposes.
+// ─── Haptic event map ──────────────────────────────────────────────────────
+// Centralized for documentation. Handlers in src/lib/haptics/index.ts.
 
 export const hapticMap = {
   tabChange: 'selection',
