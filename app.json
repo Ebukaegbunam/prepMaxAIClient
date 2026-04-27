@@ -1,0 +1,44 @@
+{
+  "expo": {
+    "name": "PrepMax AI",
+    "slug": "prepmax-ai",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "scheme": "prepmax",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.ebukaegbunam.prepmax"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.ebukaegbunam.prepmax"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "PrepMax uses your camera to take progress photos."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#3B82F6"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
