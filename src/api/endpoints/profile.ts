@@ -18,3 +18,7 @@ export async function patchProfile(data: ProfilePatch): Promise<Profile> {
   const raw = await api.patch<unknown>('profile', body);
   return ProfileSchema.parse(raw);
 }
+
+export async function deleteAccount(): Promise<void> {
+  await api.delete('profile');
+}

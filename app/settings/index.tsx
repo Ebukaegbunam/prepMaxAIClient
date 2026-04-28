@@ -1,9 +1,10 @@
-import { View, Text, Pressable, Alert, ScrollView, Switch } from 'react-native';
+import { View, Text, Pressable, Alert, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getProfile, patchProfile } from '@/api/endpoints/profile';
+import { getProfile, patchProfile, deleteAccount } from '@/api/endpoints/profile';
 import { signOut } from '@/lib/auth';
+import { useSessionStore } from '@/state/session-store';
 import { colors, typography, radius, elevation } from '@/constants/theme';
 import type { WeightUnit, LengthUnit } from '@/lib/units';
 
@@ -89,6 +90,7 @@ export default function SettingsScreen() {
   const router = useRouter();
   const qc = useQueryClient();
   const { data: profile } = useQuery({ queryKey: ['profile'], queryFn: getProfile });
+  const clearSession = useSessionStore((s) => s.clearSession);
 
   const patchMutation = useMutation({
     mutationFn: patchProfile,
@@ -126,6 +128,28 @@ export default function SettingsScreen() {
         },
       },
     ]);
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Delete account',
+      'This permanently deletes your account and all data. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete forever', style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteAccount();
+            } catch {
+              // best-effort — clear session regardless
+            }
+            await clearSession();
+            router.replace('/(auth)/sign-in');
+          },
+        },
+      ],
+    );
   };
 
   return (
@@ -170,6 +194,8 @@ export default function SettingsScreen() {
         {/* Account */}
         <Section title="Account">
           <ActionRow label="Sign out" onPress={handleSignOut} danger />
+          <Divider />
+          <ActionRow label="Delete account" onPress={handleDeleteAccount} danger />
         </Section>
 
         <Text style={{ ...typography.footnote, color: colors.neutral[400], textAlign: 'center', marginTop: 8 }}>
