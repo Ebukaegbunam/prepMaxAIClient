@@ -36,10 +36,23 @@ export default function WorkoutsScreen() {
   if (!prep || !template) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.neutral[50], alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 }}>
-        <Text style={{ ...typography.title3, color: colors.neutral[600], textAlign: 'center' }}>No workout template yet.</Text>
-        <Text style={{ ...typography.body, color: colors.neutral[400], textAlign: 'center', marginTop: 8 }}>
-          Complete onboarding to generate your first week.
+        <Text style={{ fontSize: 48, marginBottom: 16 }}>🏋️</Text>
+        <Text style={{ ...typography.title3, color: colors.neutral[900], textAlign: 'center', marginBottom: 8 }}>
+          {!prep ? 'No prep active' : 'No workouts yet'}
         </Text>
+        <Text style={{ ...typography.body, color: colors.neutral[500], textAlign: 'center', marginBottom: 28 }}>
+          {!prep
+            ? 'Create a prep to generate your weekly workout plan.'
+            : 'Your workout template is being generated — check back shortly.'}
+        </Text>
+        {!prep && (
+          <Pressable
+            onPress={() => router.push('/new-prep')}
+            style={{ backgroundColor: colors.brand[500], borderRadius: radius.lg, paddingVertical: 14, paddingHorizontal: 36 }}
+          >
+            <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>Create prep →</Text>
+          </Pressable>
+        )}
       </SafeAreaView>
     );
   }

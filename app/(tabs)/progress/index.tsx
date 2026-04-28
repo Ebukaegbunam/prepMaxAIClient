@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { View, Text, ScrollView, Pressable, TextInput, Modal, Alert, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getCurrentPrep } from '@/api/endpoints/preps';
 import { logWeight, getWeightTrend, createCheckIn, getCheckIns } from '@/api/endpoints/progress';
@@ -29,6 +30,7 @@ function RatingRow({ label, value, onChange }: { label: string; value: number; o
 }
 
 export default function ProgressScreen() {
+  const router = useRouter();
   const qc = useQueryClient();
   const [showWeightModal, setShowWeightModal] = useState(false);
   const [showCheckInModal, setShowCheckInModal] = useState(false);
@@ -92,11 +94,17 @@ export default function ProgressScreen() {
   if (!prep) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.neutral[50], alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 }}>
-        <Text style={{ fontSize: 40, marginBottom: 16 }}>📈</Text>
+        <Text style={{ fontSize: 48, marginBottom: 16 }}>📈</Text>
         <Text style={{ ...typography.title3, color: colors.neutral[900], textAlign: 'center', marginBottom: 8 }}>No prep active</Text>
-        <Text style={{ ...typography.body, color: colors.neutral[500], textAlign: 'center' }}>
-          Complete the onboarding to set up your prep and start tracking progress.
+        <Text style={{ ...typography.body, color: colors.neutral[500], textAlign: 'center', marginBottom: 28 }}>
+          Create a prep to track weight, check-ins, and progress photos.
         </Text>
+        <Pressable
+          onPress={() => router.push('/new-prep')}
+          style={{ backgroundColor: colors.brand[500], borderRadius: radius.lg, paddingVertical: 14, paddingHorizontal: 36 }}
+        >
+          <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>Create prep →</Text>
+        </Pressable>
       </SafeAreaView>
     );
   }

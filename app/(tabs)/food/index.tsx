@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl, Modal, TextInput, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getCurrentPrep } from '@/api/endpoints/preps';
 import { getDailyMacros, getWeeklyPlan, logMeal } from '@/api/endpoints/meals';
@@ -31,6 +32,7 @@ interface LogForm {
 }
 
 export default function FoodScreen() {
+  const router = useRouter();
   const qc = useQueryClient();
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState<LogForm>({ slot: 'breakfast', name: '', calories: '', protein: '', carbs: '', fat: '' });
@@ -81,11 +83,17 @@ export default function FoodScreen() {
   if (!prep) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.neutral[50], alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 }}>
-        <Text style={{ fontSize: 40, marginBottom: 16 }}>🥗</Text>
+        <Text style={{ fontSize: 48, marginBottom: 16 }}>🥗</Text>
         <Text style={{ ...typography.title3, color: colors.neutral[900], textAlign: 'center', marginBottom: 8 }}>No prep active</Text>
-        <Text style={{ ...typography.body, color: colors.neutral[500], textAlign: 'center' }}>
-          Complete the onboarding to set up your prep and start tracking meals.
+        <Text style={{ ...typography.body, color: colors.neutral[500], textAlign: 'center', marginBottom: 28 }}>
+          Create a prep to unlock meal tracking and macro targets.
         </Text>
+        <Pressable
+          onPress={() => router.push('/new-prep')}
+          style={{ backgroundColor: colors.brand[500], borderRadius: radius.lg, paddingVertical: 14, paddingHorizontal: 36 }}
+        >
+          <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>Create prep →</Text>
+        </Pressable>
       </SafeAreaView>
     );
   }

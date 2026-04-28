@@ -62,9 +62,31 @@ export default function HomeScreen() {
 
   if (!prep) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.neutral[50], alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 }}>
-        <Text style={{ ...typography.title2, color: colors.neutral[700], textAlign: 'center', marginBottom: 12 }}>No active prep</Text>
-        <Text style={{ ...typography.body, color: colors.neutral[500], textAlign: 'center' }}>Set up your prep in onboarding.</Text>
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.neutral[50] }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 }}>
+          <Text style={{ ...typography.title2, color: colors.neutral[900] }}>Hey, {firstName} 👊</Text>
+          <Pressable
+            onPress={() => router.push('/settings')}
+            style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: colors.neutral[100], alignItems: 'center', justifyContent: 'center' }}
+          >
+            <Text style={{ fontSize: 16 }}>⚙️</Text>
+          </Pressable>
+        </View>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 }}>
+          <Text style={{ fontSize: 48, marginBottom: 16 }}>🏆</Text>
+          <Text style={{ ...typography.title2, color: colors.neutral[900], textAlign: 'center', marginBottom: 8 }}>
+            Start your prep
+          </Text>
+          <Text style={{ ...typography.body, color: colors.neutral[500], textAlign: 'center', marginBottom: 32 }}>
+            Set your division, target weight, and phase split. We'll build your weekly plan.
+          </Text>
+          <Pressable
+            onPress={() => router.push('/new-prep')}
+            style={{ backgroundColor: colors.brand[500], borderRadius: radius.lg, paddingVertical: 16, paddingHorizontal: 40, ...elevation[2] }}
+          >
+            <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>Create prep →</Text>
+          </Pressable>
+        </View>
       </SafeAreaView>
     );
   }
