@@ -1,7 +1,11 @@
-import { Redirect } from 'expo-router';
+import { View, ActivityIndicator } from 'react-native';
+import { colors } from '@/constants/theme';
 
-// AuthGate in _layout.tsx handles all routing logic.
-// This just renders a redirect to kick the router; AuthGate will override it.
+// Neutral loading screen — AuthGate in _layout.tsx handles all routing from here
 export default function Entry() {
-  return <Redirect href="/(auth)/sign-in" />;
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.neutral[0], alignItems: 'center', justifyContent: 'center' }}>
+      <ActivityIndicator color={colors.brand[500]} size="large" />
+    </View>
+  );
 }

@@ -19,59 +19,56 @@ const queryClient = new QueryClient({
 type ProfileStatus = 'unknown' | 'exists' | 'missing';
 
 function AuthGate() {
-  const { isAuthenticated, isLoading, loadSession } = useSessionStore();
+  const { user, accessToken, isLoading, loadSession } = useSessionStore();
   const segments = useSegments();
   const router = useRouter();
+  const authed = !!(user && accessToken);
   const [profileStatus, setProfileStatus] = useState<ProfileStatus>('unknown');
 
   useEffect(() => {
     loadSession();
   }, []);
 
+  // Reset profile check on sign-out so a re-login always re-checks
   useEffect(() => {
-    if (isLoading) return;
-    if (!isAuthenticated()) return;
-    if (profileStatus !== 'unknown') return;
+    if (!authed) setProfileStatus('unknown');
+  }, [authed]);
 
+  // Fetch profile once authenticated
+  useEffect(() => {
+    if (isLoading || !authed || profileStatus !== 'unknown') return;
     getProfile()
       .then(() => setProfileStatus('exists'))
       .catch((err) => {
         if (err instanceof ApiRequestError && err.status === 404) {
           setProfileStatus('missing');
         } else {
-          // Network error — assume profile exists, home will handle it
-          setProfileStatus('exists');
+          setProfileStatus('exists'); // network error — assume exists, home handles it
         }
       });
-  }, [isLoading, isAuthenticated()]);
+  }, [isLoading, authed, profileStatus]);
 
+  // Navigate once we have everything we need
   useEffect(() => {
     if (isLoading) return;
 
     const inAuth = segments[0] === '(auth)';
+    const inTabs = segments[0] === '(tabs)';
     const inOnboarding = segments[0] === '(onboarding)';
-    const authed = isAuthenticated();
 
-    if (!authed && !inAuth) {
-      router.replace('/(auth)/sign-in');
+    if (!authed) {
+      if (!inAuth) router.replace('/(auth)/sign-in');
       return;
     }
 
-    if (authed && inAuth) {
-      // Don't route until we know profile status
-      if (profileStatus === 'unknown') return;
-      if (profileStatus === 'missing') {
-        router.replace('/(onboarding)/basics');
-      } else {
-        router.replace('/(tabs)/home');
-      }
-      return;
-    }
+    if (profileStatus === 'unknown') return; // still fetching
 
-    if (authed && !inOnboarding && !inAuth && profileStatus === 'missing') {
-      router.replace('/(onboarding)/basics');
+    if (profileStatus === 'missing') {
+      if (!inOnboarding) router.replace('/(onboarding)/basics');
+    } else {
+      if (!inTabs) router.replace('/(tabs)/home');
     }
-  }, [isLoading, segments, profileStatus]);
+  }, [isLoading, authed, segments, profileStatus]);
 
   return null;
 }

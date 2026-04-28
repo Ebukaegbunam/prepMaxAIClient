@@ -78,6 +78,18 @@ export default function FoodScreen() {
     );
   }
 
+  if (!prep) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.neutral[50], alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 }}>
+        <Text style={{ fontSize: 40, marginBottom: 16 }}>🥗</Text>
+        <Text style={{ ...typography.title3, color: colors.neutral[900], textAlign: 'center', marginBottom: 8 }}>No prep active</Text>
+        <Text style={{ ...typography.body, color: colors.neutral[500], textAlign: 'center' }}>
+          Complete the onboarding to set up your prep and start tracking meals.
+        </Text>
+      </SafeAreaView>
+    );
+  }
+
   const caloriesLogged = macros?.logged.calories ?? 0;
   const caloriesTarget = plan?.daily_calories ?? macros?.targets.calories ?? 2000;
   const proteinLogged = macros?.logged.protein_g ?? 0;
