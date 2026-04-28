@@ -89,6 +89,18 @@ export default function ProgressScreen() {
     );
   }
 
+  if (!prep) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.neutral[50], alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 }}>
+        <Text style={{ fontSize: 40, marginBottom: 16 }}>📈</Text>
+        <Text style={{ ...typography.title3, color: colors.neutral[900], textAlign: 'center', marginBottom: 8 }}>No prep active</Text>
+        <Text style={{ ...typography.body, color: colors.neutral[500], textAlign: 'center' }}>
+          Complete the onboarding to set up your prep and start tracking progress.
+        </Text>
+      </SafeAreaView>
+    );
+  }
+
   const latestWeight = weightLogs?.[0]?.weight_kg;
   const startingWeight = prep?.starting_weight_kg;
   const targetWeight = prep?.target_weight_kg;
