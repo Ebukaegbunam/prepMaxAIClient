@@ -58,14 +58,46 @@ export async function signInWithGoogle(): Promise<void> {
     return;
   }
 
-  // Supabase PKCE returns ?code=...; check fragment too as fallback
   const qs = result.url.split('?')[1]?.split('#')[0] ?? '';
   const fragment = result.url.split('#')[1] ?? '';
-  const code = new URLSearchParams(qs).get('code') ?? new URLSearchParams(fragment).get('code');
-  if (!code) throw new Error(`No OAuth code in callback URL: ${result.url}`);
+  const qParams = new URLSearchParams(qs);
+  const hParams = new URLSearchParams(fragment);
 
-  const resp = await api.post('auth/google/callback', { code, code_verifier: codeVerifier });
-  await _persistSession(resp);
+  const code = qParams.get('code') ?? hParams.get('code');
+
+  if (code) {
+    // PKCE flow: exchange code + verifier with backend
+    const resp = await api.post('auth/google/callback', { code, code_verifier: codeVerifier });
+    await _persistSession(resp);
+  } else {
+    // Implicit flow: Supabase returned tokens directly in the hash
+    const accessToken = hParams.get('access_token');
+    if (!accessToken) {
+      const errorDesc = qParams.get('error_description') ?? hParams.get('error_description') ?? 'unknown';
+      throw new Error(`Google sign-in failed: ${decodeURIComponent(errorDesc)}`);
+    }
+    const refreshToken = hParams.get('refresh_token') ?? '';
+    const expiresAt = hParams.get('expires_at')
+      ? new Date(parseInt(hParams.get('expires_at')!, 10) * 1000).toISOString()
+      : new Date(Date.now() + 3600 * 1000).toISOString();
+
+    // Decode JWT payload (base64url → base64 → JSON)
+    const b64 = accessToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    const payload = JSON.parse(atob(b64 + '='.repeat((4 - b64.length % 4) % 4))) as Record<string, unknown>;
+    const userMeta = (payload.user_metadata ?? {}) as Record<string, string>;
+
+    await useSessionStore.getState().setSession(
+      {
+        id: payload.sub as string,
+        email: (payload.email as string | undefined) ?? null,
+        name: userMeta.full_name ?? userMeta.name ?? null,
+      },
+      accessToken,
+      refreshToken,
+      expiresAt,
+    );
+  }
+
   await SecureStore.deleteItemAsync(PKCE_VERIFIER_KEY);
 }
 
