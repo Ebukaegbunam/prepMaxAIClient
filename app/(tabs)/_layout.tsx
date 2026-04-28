@@ -1,17 +1,21 @@
 import { Tabs } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Home, Dumbbell, UtensilsCrossed, TrendingUp, Trophy } from 'lucide-react-native';
-import { colors, layout, iconSize } from '@/constants/theme';
+import { colors, iconSize } from '@/constants/theme';
 import { useHaptic } from '@/lib/haptics';
 
 export default function TabLayout() {
   const haptic = useHaptic();
+  const insets = useSafeAreaInsets();
 
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          height: layout.tabBarHeight,
+          height: 56 + insets.bottom,
+          paddingBottom: insets.bottom,
+          paddingTop: 8,
           borderTopWidth: 1,
           borderTopColor: colors.neutral[100],
           backgroundColor: colors.neutral[0],
@@ -73,6 +77,9 @@ export default function TabLayout() {
           ),
         }}
       />
+      {/* These screens live inside (tabs)/ but are not tab bar items */}
+      <Tabs.Screen name="workouts/[day]" options={{ href: null }} />
+      <Tabs.Screen name="workouts/session" options={{ href: null }} />
     </Tabs>
   );
 }
