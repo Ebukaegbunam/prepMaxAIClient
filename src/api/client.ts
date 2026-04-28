@@ -2,7 +2,7 @@ import * as SecureStore from 'expo-secure-store';
 import { logger } from '@/lib/logger';
 
 // TODO(env): move to src/config/env.ts once env management is set up
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8000/v1';
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8000';
 
 const NETWORK_BUFFER_SIZE = 20;
 
@@ -74,7 +74,7 @@ async function apiFetch<T>(
   retried = false,
 ): Promise<T> {
   const token = await getAccessToken();
-  const url = `${BASE_URL}${path}`;
+  const url = `${BASE_URL}/${path}`;
   const start = Date.now();
   const method = (options.method ?? 'GET').toUpperCase();
 

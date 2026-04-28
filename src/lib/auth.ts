@@ -9,7 +9,6 @@ import { logger } from '@/lib/logger';
 
 WebBrowser.maybeCompleteAuthSession();
 
-const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 const PKCE_VERIFIER_KEY = 'prepmax_pkce_verifier';
 
 async function _persistSession(raw: unknown) {
@@ -46,15 +45,10 @@ export async function signInWithGoogle(): Promise<void> {
   const { codeVerifier, codeChallenge } = await _generatePKCE();
   await SecureStore.setItemAsync(PKCE_VERIFIER_KEY, codeVerifier);
 
-  const params = new URLSearchParams({
-    provider: 'google',
-    redirect_to: 'prepmax://auth/callback',
-    code_challenge: codeChallenge,
-    code_challenge_method: 'S256',
-    access_type: 'offline',
-    scopes: 'email profile',
-  });
-  const authUrl = `${SUPABASE_URL}/auth/v1/authorize?${params}`;
+  // Backend constructs the Supabase authorize URL — client doesn't need SUPABASE_URL
+  const { auth_url: authUrl } = await api.get<{ auth_url: string }>(
+    `auth/google/start?code_challenge=${encodeURIComponent(codeChallenge)}&code_challenge_method=S256`,
+  );
 
   const result = await WebBrowser.openAuthSessionAsync(authUrl, 'prepmax://auth/callback');
 
@@ -64,8 +58,8 @@ export async function signInWithGoogle(): Promise<void> {
     return;
   }
 
-  const url = new URL(result.url);
-  const code = url.searchParams.get('code');
+  const qs = result.url.split('?')[1] ?? '';
+  const code = new URLSearchParams(qs).get('code');
   if (!code) throw new Error('No OAuth code in callback URL');
 
   const resp = await api.post('auth/google/callback', { code, code_verifier: codeVerifier });
