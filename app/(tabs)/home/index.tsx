@@ -10,6 +10,7 @@ import { getWeightTrend } from '@/api/endpoints/progress';
 import { getProfile } from '@/api/endpoints/profile';
 import { StatBar } from '@/components/ui';
 import { NewPrepModal } from '@/components/NewPrepModal';
+import { useUnits } from '@/lib/units';
 import { colors, typography, radius, elevation } from '@/constants/theme';
 
 function today() { return new Date().toISOString().split('T')[0]; }
@@ -50,6 +51,7 @@ export default function HomeScreen() {
     enabled: !!prep?.id,
   });
 
+  const { fw, weightUnit } = useUnits();
   const onRefresh = () => { refetchPrep(); refetchMacros(); };
 
   const latestWeight = weightLogs?.[0]?.weight_kg;
@@ -147,11 +149,11 @@ export default function HomeScreen() {
             <View style={{ marginTop: 12, flexDirection: 'row', gap: 20 }}>
               <View>
                 <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: 0.5 }}>Current</Text>
-                <Text style={{ fontSize: 18, fontWeight: '700', color: '#fff' }}>{latestWeight.toFixed(1)} kg</Text>
+                <Text style={{ fontSize: 18, fontWeight: '700', color: '#fff' }}>{fw(latestWeight)}</Text>
               </View>
               <View>
                 <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: 0.5 }}>Target</Text>
-                <Text style={{ fontSize: 18, fontWeight: '700', color: '#fff' }}>{prep.target_weight_kg.toFixed(1)} kg</Text>
+                <Text style={{ fontSize: 18, fontWeight: '700', color: '#fff' }}>{fw(prep.target_weight_kg)}</Text>
               </View>
             </View>
           )}

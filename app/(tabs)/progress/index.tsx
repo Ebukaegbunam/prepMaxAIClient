@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getCurrentPrep } from '@/api/endpoints/preps';
 import { NewPrepModal } from '@/components/NewPrepModal';
+import { useUnits } from '@/lib/units';
 import { logWeight, getWeightTrend, createCheckIn, getCheckIns } from '@/api/endpoints/progress';
 import { colors, typography, radius, elevation } from '@/constants/theme';
 
@@ -111,6 +112,7 @@ export default function ProgressScreen() {
     );
   }
 
+  const { fw, weightUnit } = useUnits();
   const latestWeight = weightLogs?.[0]?.weight_kg;
   const startingWeight = prep?.starting_weight_kg;
   const targetWeight = prep?.target_weight_kg;
@@ -142,10 +144,10 @@ export default function ProgressScreen() {
 
           <View style={{ flexDirection: 'row', gap: 16, marginBottom: 16 }}>
             {[
-              { label: 'Current', value: latestWeight != null ? `${latestWeight.toFixed(1)} kg` : '—' },
-              { label: 'Start', value: startingWeight != null ? `${startingWeight.toFixed(1)} kg` : '—' },
-              { label: 'Target', value: targetWeight != null ? `${targetWeight.toFixed(1)} kg` : '—' },
-              { label: 'Change', value: weightChange != null ? `${weightChange > 0 ? '+' : ''}${weightChange.toFixed(1)} kg` : '—' },
+              { label: 'Current', value: latestWeight != null ? fw(latestWeight) : '—' },
+              { label: 'Start', value: startingWeight != null ? fw(startingWeight) : '—' },
+              { label: 'Target', value: targetWeight != null ? fw(targetWeight) : '—' },
+              { label: 'Change', value: weightChange != null ? `${weightChange > 0 ? '+' : ''}${fw(Math.abs(weightChange))}` : '—' },
             ].map(({ label, value }) => (
               <View key={label} style={{ flex: 1, alignItems: 'center' }}>
                 <Text style={{ fontSize: 15, fontWeight: '700', color: colors.neutral[900] }}>{value}</Text>
@@ -162,7 +164,7 @@ export default function ProgressScreen() {
                   <Text style={{ ...typography.footnote, color: colors.neutral[600] }}>
                     {new Date(log.logged_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                   </Text>
-                  <Text style={{ ...typography.footnote, color: colors.neutral[900], fontWeight: '700' }}>{log.weight_kg.toFixed(1)} kg</Text>
+                  <Text style={{ ...typography.footnote, color: colors.neutral[900], fontWeight: '700' }}>{fw(log.weight_kg)}</Text>
                 </View>
               ))}
             </View>
