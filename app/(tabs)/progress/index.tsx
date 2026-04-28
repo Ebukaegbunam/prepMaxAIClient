@@ -1,169 +1,274 @@
-import { View, Text, ScrollView, Pressable } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Camera, Check, Dumbbell, Moon, Zap, Sparkles, ArrowRight } from 'lucide-react-native';
-import { colors, typography, tabularNumerals, radius, elevation as elevationStyles } from '@/constants/theme';
-import { Card } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
 import { useState } from 'react';
+import { View, Text, ScrollView, Pressable, TextInput, Modal, Alert, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { getCurrentPrep } from '@/api/endpoints/preps';
+import { logWeight, getWeightTrend, createCheckIn, getCheckIns } from '@/api/endpoints/progress';
+import { colors, typography, radius, elevation } from '@/constants/theme';
 
-const PHOTOS = [
-  { angle: 'Front',  captured: true },
-  { angle: 'Side L', captured: true },
-  { angle: 'Side R', captured: false },
-  { angle: 'Back',   captured: false },
-];
+const RATINGS = [1, 2, 3, 4, 5];
+const EMOJI = ['😩', '😕', '😐', '🙂', '😄'];
 
-const STEPS = ['Weight', 'Measurements', 'Photos', 'Ratings'];
+function RatingRow({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
+  return (
+    <View style={{ marginBottom: 14 }}>
+      <Text style={{ ...typography.footnote, color: colors.neutral[600], fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>{label}</Text>
+      <View style={{ flexDirection: 'row', gap: 8 }}>
+        {RATINGS.map((r) => (
+          <Pressable
+            key={r}
+            onPress={() => onChange(r)}
+            style={{ flex: 1, paddingVertical: 10, borderRadius: radius.md, borderWidth: 1.5, borderColor: value === r ? colors.brand[500] : colors.neutral[200], backgroundColor: value === r ? colors.brand[50] : colors.neutral[0], alignItems: 'center' }}
+          >
+            <Text style={{ fontSize: 18 }}>{EMOJI[r - 1]}</Text>
+          </Pressable>
+        ))}
+      </View>
+    </View>
+  );
+}
 
-const RATINGS_CONFIG = [
-  { key: 'mood',     label: 'Mood',             icon: Sparkles },
-  { key: 'energy',   label: 'Energy',            icon: Zap },
-  { key: 'sleep',    label: 'Sleep',             icon: Moon },
-  { key: 'training', label: 'Training quality',  icon: Dumbbell },
-];
+export default function ProgressScreen() {
+  const qc = useQueryClient();
+  const [showWeightModal, setShowWeightModal] = useState(false);
+  const [showCheckInModal, setShowCheckInModal] = useState(false);
+  const [weightInput, setWeightInput] = useState('');
+  const [checkIn, setCheckIn] = useState({ energy_level: 3, mood_score: 3, sleep_quality: 3, training_performance: 3, weight_kg: '', notes: '' });
 
-export default function ProgressTab() {
-  const [ratings, setRatings] = useState<Record<string, number>>({ mood: 4, energy: 3, sleep: 4, training: 5 });
-  const activeStep = 2;
+  const { data: prep, isLoading: prepLoading } = useQuery({ queryKey: ['prep-current'], queryFn: getCurrentPrep });
+
+  const { data: weightLogs, refetch: refetchWeight } = useQuery({
+    queryKey: ['weight-trend', prep?.id],
+    queryFn: () => getWeightTrend(prep!.id),
+    enabled: !!prep?.id,
+  });
+
+  const { data: checkIns } = useQuery({
+    queryKey: ['check-ins', prep?.id],
+    queryFn: () => getCheckIns(prep!.id),
+    enabled: !!prep?.id,
+  });
+
+  const logWeightMutation = useMutation({
+    mutationFn: () => logWeight(prep!.id, {
+      logged_at: new Date().toISOString(),
+      weight_kg: parseFloat(weightInput),
+      source: 'manual',
+    }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['weight-trend'] });
+      setShowWeightModal(false);
+      setWeightInput('');
+    },
+    onError: () => Alert.alert('Failed to log weight'),
+  });
+
+  const checkInMutation = useMutation({
+    mutationFn: () => createCheckIn(prep!.id, {
+      weight_kg: parseFloat(checkIn.weight_kg) || (weightLogs?.[0]?.weight_kg ?? 80),
+      energy_level: checkIn.energy_level,
+      mood_score: checkIn.mood_score,
+      sleep_quality: checkIn.sleep_quality,
+      training_performance: checkIn.training_performance,
+      notes: checkIn.notes || undefined,
+    }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['check-ins'] });
+      qc.invalidateQueries({ queryKey: ['weight-trend'] });
+      setShowCheckInModal(false);
+      Alert.alert('Check-in saved! ✓', 'Your weekly check-in has been recorded.');
+    },
+    onError: () => Alert.alert('Failed to save check-in'),
+  });
+
+  if (prepLoading) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.neutral[50], alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator color={colors.brand[500]} size="large" />
+      </SafeAreaView>
+    );
+  }
+
+  const latestWeight = weightLogs?.[0]?.weight_kg;
+  const startingWeight = prep?.starting_weight_kg;
+  const targetWeight = prep?.target_weight_kg;
+  const weightChange = latestWeight != null && startingWeight != null ? latestWeight - startingWeight : null;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.neutral[50] }} edges={['top']}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 48 }} showsVerticalScrollIndicator={false}>
-        {/* Top bar */}
-        <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 11, fontWeight: '500', color: colors.neutral[500], textTransform: 'uppercase', letterSpacing: 0.66 }}>Week 4 check-in</Text>
-            <Text style={{ ...typography.title2, color: colors.neutral[900] }}>Sunday, Apr 27</Text>
-          </View>
-          <Text style={{ fontSize: 11, fontWeight: '500', color: colors.neutral[500], ...tabularNumerals }}>3 of 4</Text>
-        </View>
-
-        {/* Step progress dots */}
-        <View style={{ paddingHorizontal: 16, paddingBottom: 20, flexDirection: 'row', gap: 6 }}>
-          {STEPS.map((_, i) => (
-            <View
-              key={i}
-              style={{ flex: 1, height: 4, borderRadius: 999, backgroundColor: i < activeStep ? colors.brand[500] : i === activeStep ? colors.brand[300] : colors.neutral[200] }}
-            />
-          ))}
-        </View>
-
-        {/* Completed steps recap */}
-        <View style={{ paddingHorizontal: 16, paddingBottom: 16, flexDirection: 'row', gap: 8 }}>
-          <Card elevation={1} padding={12} style={{ flex: 1 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <View style={{ width: 18, height: 18, borderRadius: 999, backgroundColor: colors.success[500], alignItems: 'center', justifyContent: 'center' }}>
-                <Check size={11} color="#fff" strokeWidth={3} />
-              </View>
-              <Text style={{ fontSize: 11, fontWeight: '500', color: colors.neutral[500], textTransform: 'uppercase', letterSpacing: 0.66 }}>Weight</Text>
-            </View>
-            <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 4, marginTop: 6 }}>
-              <Text style={{ fontSize: 22, fontWeight: '700', color: colors.neutral[900], letterSpacing: -0.22, ...tabularNumerals }}>92.4</Text>
-              <Text style={{ fontSize: 13, fontWeight: '500', color: colors.neutral[400], paddingBottom: 2 }}>kg</Text>
-              <Text style={{ fontSize: 11, fontWeight: '500', color: colors.success[700], paddingBottom: 2, marginLeft: 4 }}>−0.6</Text>
-            </View>
-          </Card>
-          <Card elevation={1} padding={12} style={{ flex: 1 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <View style={{ width: 18, height: 18, borderRadius: 999, backgroundColor: colors.success[500], alignItems: 'center', justifyContent: 'center' }}>
-                <Check size={11} color="#fff" strokeWidth={3} />
-              </View>
-              <Text style={{ fontSize: 11, fontWeight: '500', color: colors.neutral[500], textTransform: 'uppercase', letterSpacing: 0.66 }}>Measurements</Text>
-            </View>
-            <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 4, marginTop: 6 }}>
-              <Text style={{ fontSize: 22, fontWeight: '700', color: colors.neutral[900], letterSpacing: -0.22, ...tabularNumerals }}>7</Text>
-              <Text style={{ fontSize: 13, fontWeight: '500', color: colors.neutral[400], paddingBottom: 2 }}>logged</Text>
-            </View>
-          </Card>
-        </View>
-
-        {/* Active step header */}
-        <View style={{ paddingHorizontal: 20, paddingBottom: 16 }}>
-          <Text style={{ ...typography.title1, color: colors.neutral[900] }}>Progress photos</Text>
-          <Text style={{ fontSize: 15, lineHeight: 20, fontWeight: '400', color: colors.neutral[500], marginTop: 4 }}>
-            Same lighting, same angle, neutral pose. The AI compares week-over-week.
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.neutral[50] }}>
+      <View style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 }}>
+        <Text style={{ ...typography.title1, color: colors.neutral[900] }}>Progress</Text>
+        {prep && (
+          <Text style={{ ...typography.footnote, color: colors.neutral[500], marginTop: 2 }}>
+            Week {prep.current_week} · {prep.current_phase}
           </Text>
-        </View>
+        )}
+      </View>
 
-        {/* Photo grid */}
-        <View style={{ paddingHorizontal: 16, paddingBottom: 16 }}>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
-            {PHOTOS.map((p, i) => (
-              <Pressable
-                key={i}
-                style={{ width: '47%', aspectRatio: 3 / 4, borderRadius: 14, overflow: 'hidden', backgroundColor: p.captured ? colors.neutral[400] : colors.neutral[100], borderWidth: p.captured ? 0 : 1.5, borderColor: colors.neutral[300], borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center' }}
-              >
-                {!p.captured && (
-                  <View style={{ alignItems: 'center', justifyContent: 'center', flex: 1 }}>
-                    <View style={{ opacity: 0.4 }}>
-                      {/* Silhouette placeholder */}
-                      <View style={{ width: 36, height: 36, borderRadius: 999, borderWidth: 1.5, borderColor: colors.neutral[400] }} />
-                      <View style={{ width: 36, height: 54, borderWidth: 1.5, borderColor: colors.neutral[400], borderRadius: 10, marginTop: 4 }} />
-                    </View>
-                  </View>
-                )}
+      <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 32 }} showsVerticalScrollIndicator={false}>
+        {/* Weight card */}
+        <View style={{ borderRadius: radius.lg, backgroundColor: colors.neutral[0], padding: 18, marginBottom: 16, ...elevation[1] }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+            <Text style={{ ...typography.title3, color: colors.neutral[900] }}>Weight</Text>
+            <Pressable
+              onPress={() => setShowWeightModal(true)}
+              style={{ paddingHorizontal: 14, paddingVertical: 7, borderRadius: radius.md, backgroundColor: colors.brand[50], borderWidth: 1, borderColor: colors.brand[100] }}
+            >
+              <Text style={{ fontSize: 13, fontWeight: '700', color: colors.brand[600] }}>+ Log</Text>
+            </Pressable>
+          </View>
 
-                {p.captured && (
-                  <View style={{ position: 'absolute', top: 8, right: 8, width: 22, height: 22, borderRadius: 999, backgroundColor: colors.success[500], borderWidth: 2, borderColor: '#fff', alignItems: 'center', justifyContent: 'center' }}>
-                    <Check size={11} color="#fff" strokeWidth={3} />
-                  </View>
-                )}
-
-                {!p.captured && (
-                  <View style={{ position: 'absolute', bottom: 8, right: 8, width: 28, height: 28, borderRadius: 999, backgroundColor: colors.brand[500], alignItems: 'center', justifyContent: 'center' }}>
-                    <Camera size={14} color="#fff" strokeWidth={2} />
-                  </View>
-                )}
-
-                <View style={{ position: 'absolute', bottom: 8, left: 10 }}>
-                  <Text style={{ fontSize: 13, fontWeight: '600', color: p.captured ? '#fff' : colors.neutral[600] }}>{p.angle}</Text>
-                </View>
-              </Pressable>
+          <View style={{ flexDirection: 'row', gap: 16, marginBottom: 16 }}>
+            {[
+              { label: 'Current', value: latestWeight != null ? `${latestWeight.toFixed(1)} kg` : '—' },
+              { label: 'Start', value: startingWeight != null ? `${startingWeight.toFixed(1)} kg` : '—' },
+              { label: 'Target', value: targetWeight != null ? `${targetWeight.toFixed(1)} kg` : '—' },
+              { label: 'Change', value: weightChange != null ? `${weightChange > 0 ? '+' : ''}${weightChange.toFixed(1)} kg` : '—' },
+            ].map(({ label, value }) => (
+              <View key={label} style={{ flex: 1, alignItems: 'center' }}>
+                <Text style={{ fontSize: 15, fontWeight: '700', color: colors.neutral[900] }}>{value}</Text>
+                <Text style={{ ...typography.footnote, color: colors.neutral[400], marginTop: 2 }}>{label}</Text>
+              </View>
             ))}
           </View>
-        </View>
 
-        {/* Ratings */}
-        <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
-          <Card elevation={1} padding={16}>
-            <Text style={{ fontSize: 11, fontWeight: '500', color: colors.neutral[500], textTransform: 'uppercase', letterSpacing: 0.66, marginBottom: 12 }}>How was this week?</Text>
-            {RATINGS_CONFIG.map((r, i) => {
-              const Icon = r.icon;
-              return (
-                <View key={r.key} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, borderTopWidth: i === 0 ? 0 : 1, borderTopColor: colors.neutral[100] }}>
-                  <Icon size={16} color={colors.neutral[500]} strokeWidth={2} />
-                  <Text style={{ fontSize: 15, fontWeight: '600', color: colors.neutral[800], flex: 1 }}>{r.label}</Text>
-                  <View style={{ flexDirection: 'row', gap: 4 }}>
-                    {[1, 2, 3, 4, 5].map((v) => (
-                      <Pressable
-                        key={v}
-                        onPress={() => setRatings((p) => ({ ...p, [r.key]: v }))}
-                        style={{ width: 24, height: 24, borderRadius: 999, backgroundColor: v <= ratings[r.key] ? colors.brand[500] : colors.neutral[100] }}
-                      />
-                    ))}
-                  </View>
+          {weightLogs && weightLogs.length > 0 && (
+            <View>
+              <Text style={{ ...typography.footnote, color: colors.neutral[500], fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>Recent</Text>
+              {weightLogs.slice(0, 5).map((log) => (
+                <View key={log.id} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: colors.neutral[50] }}>
+                  <Text style={{ ...typography.footnote, color: colors.neutral[600] }}>
+                    {new Date(log.logged_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  </Text>
+                  <Text style={{ ...typography.footnote, color: colors.neutral[900], fontWeight: '700' }}>{log.weight_kg.toFixed(1)} kg</Text>
                 </View>
-              );
-            })}
-          </Card>
+              ))}
+            </View>
+          )}
         </View>
 
-        {/* Bottom actions */}
-        <View style={{ paddingHorizontal: 16, paddingTop: 20, flexDirection: 'row', gap: 10 }}>
-          <View style={{ flex: 1 }}>
-            <Button variant="outline" size="lg" full>Skip step</Button>
-          </View>
-          <View style={{ flex: 2 }}>
-            <Button variant="primary" size="lg" full icon={<ArrowRight size={18} color="#fff" strokeWidth={2} />}>
-              Submit check-in
-            </Button>
-          </View>
-        </View>
+        {/* Weekly check-in CTA */}
+        <Pressable
+          onPress={() => setShowCheckInModal(true)}
+          style={{ borderRadius: radius.lg, backgroundColor: colors.brand[500], padding: 20, marginBottom: 16, ...elevation[2] }}
+        >
+          <Text style={{ fontSize: 20, marginBottom: 8 }}>📋</Text>
+          <Text style={{ ...typography.title3, color: '#fff', marginBottom: 4 }}>Weekly check-in</Text>
+          <Text style={{ ...typography.footnote, color: 'rgba(255,255,255,0.75)' }}>
+            Log your energy, mood, sleep, and training quality.
+          </Text>
+        </Pressable>
 
-        <View style={{ paddingTop: 16, alignItems: 'center' }}>
-          <Text style={{ fontSize: 11, fontWeight: '500', color: colors.neutral[400] }}>AI weekly report generates after submit · usually 30s</Text>
-        </View>
+        {/* Past check-ins */}
+        {checkIns && checkIns.length > 0 && (
+          <View style={{ borderRadius: radius.lg, backgroundColor: colors.neutral[0], padding: 18, ...elevation[1] }}>
+            <Text style={{ ...typography.title3, color: colors.neutral[900], marginBottom: 12 }}>Check-in history</Text>
+            {checkIns.slice(0, 5).map((ci) => (
+              <View key={ci.id} style={{ paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.neutral[50] }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                  <Text style={{ ...typography.body, fontWeight: '700', color: colors.neutral[900] }}>Week {ci.week_number}</Text>
+                  <Text style={{ ...typography.footnote, color: colors.neutral[500] }}>
+                    {new Date(ci.checked_in_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  </Text>
+                </View>
+                <View style={{ flexDirection: 'row', gap: 12, marginTop: 4 }}>
+                  {[
+                    { label: 'Energy', v: ci.energy_level },
+                    { label: 'Mood', v: ci.mood_score },
+                    { label: 'Sleep', v: ci.sleep_quality },
+                    { label: 'Training', v: ci.training_performance },
+                  ].map(({ label, v }) => (
+                    <Text key={label} style={{ ...typography.footnote, color: colors.neutral[500] }}>
+                      {label}: {EMOJI[v - 1]}
+                    </Text>
+                  ))}
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
       </ScrollView>
+
+      {/* Log Weight Modal */}
+      <Modal visible={showWeightModal} animationType="slide" presentationStyle="formSheet" onRequestClose={() => setShowWeightModal(false)}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.neutral[0] }}>
+          <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.neutral[100] }}>
+              <Text style={{ ...typography.title3, color: colors.neutral[900] }}>Log weight</Text>
+              <Pressable onPress={() => setShowWeightModal(false)} hitSlop={8}>
+                <Text style={{ fontSize: 22, color: colors.neutral[500] }}>✕</Text>
+              </Pressable>
+            </View>
+            <View style={{ padding: 20 }}>
+              <Text style={{ ...typography.footnote, color: colors.neutral[600], fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>Weight (kg)</Text>
+              <TextInput
+                value={weightInput}
+                onChangeText={setWeightInput}
+                keyboardType="decimal-pad"
+                placeholder={latestWeight?.toFixed(1) ?? '80.0'}
+                placeholderTextColor={colors.neutral[300]}
+                autoFocus
+                style={{ borderWidth: 1, borderColor: colors.neutral[200], borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 16, fontSize: 28, fontWeight: '800', color: colors.neutral[900], textAlign: 'center', marginBottom: 24 }}
+              />
+              <Pressable
+                onPress={() => logWeightMutation.mutate()}
+                disabled={!weightInput || logWeightMutation.isPending}
+                style={{ backgroundColor: weightInput ? colors.brand[500] : colors.neutral[200], borderRadius: radius.lg, paddingVertical: 16, alignItems: 'center' }}
+              >
+                <Text style={{ fontSize: 16, fontWeight: '700', color: weightInput ? '#fff' : colors.neutral[400] }}>
+                  {logWeightMutation.isPending ? 'Saving…' : 'Save'}
+                </Text>
+              </Pressable>
+            </View>
+          </KeyboardAvoidingView>
+        </SafeAreaView>
+      </Modal>
+
+      {/* Check-in Modal */}
+      <Modal visible={showCheckInModal} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowCheckInModal(false)}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.neutral[0] }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.neutral[100] }}>
+            <Text style={{ ...typography.title3, color: colors.neutral[900] }}>Weekly check-in</Text>
+            <Pressable onPress={() => setShowCheckInModal(false)} hitSlop={8}>
+              <Text style={{ fontSize: 22, color: colors.neutral[500] }}>✕</Text>
+            </Pressable>
+          </View>
+          <ScrollView contentContainerStyle={{ padding: 20 }} keyboardShouldPersistTaps="handled">
+            <Text style={{ ...typography.footnote, color: colors.neutral[600], fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>Weight (kg)</Text>
+            <TextInput
+              value={checkIn.weight_kg}
+              onChangeText={(v) => setCheckIn((c) => ({ ...c, weight_kg: v.replace(/[^0-9.]/g, '') }))}
+              keyboardType="decimal-pad"
+              placeholder={latestWeight?.toFixed(1) ?? '80.0'}
+              placeholderTextColor={colors.neutral[300]}
+              style={{ borderWidth: 1, borderColor: colors.neutral[200], borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 13, fontSize: 18, fontWeight: '700', color: colors.neutral[900], textAlign: 'center', marginBottom: 20 }}
+            />
+            <RatingRow label="Energy level" value={checkIn.energy_level} onChange={(v) => setCheckIn((c) => ({ ...c, energy_level: v }))} />
+            <RatingRow label="Mood" value={checkIn.mood_score} onChange={(v) => setCheckIn((c) => ({ ...c, mood_score: v }))} />
+            <RatingRow label="Sleep quality" value={checkIn.sleep_quality} onChange={(v) => setCheckIn((c) => ({ ...c, sleep_quality: v }))} />
+            <RatingRow label="Training performance" value={checkIn.training_performance} onChange={(v) => setCheckIn((c) => ({ ...c, training_performance: v }))} />
+            <Text style={{ ...typography.footnote, color: colors.neutral[600], fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 4, marginBottom: 6 }}>Notes (optional)</Text>
+            <TextInput
+              value={checkIn.notes}
+              onChangeText={(v) => setCheckIn((c) => ({ ...c, notes: v }))}
+              placeholder="How's the week going?"
+              placeholderTextColor={colors.neutral[300]}
+              multiline
+              numberOfLines={3}
+              style={{ borderWidth: 1, borderColor: colors.neutral[200], borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: colors.neutral[900], minHeight: 80, textAlignVertical: 'top', marginBottom: 24 }}
+            />
+            <Pressable
+              onPress={() => checkInMutation.mutate()}
+              disabled={checkInMutation.isPending}
+              style={{ backgroundColor: colors.brand[500], borderRadius: radius.lg, paddingVertical: 16, alignItems: 'center' }}
+            >
+              <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>
+                {checkInMutation.isPending ? 'Saving…' : 'Save check-in'}
+              </Text>
+            </Pressable>
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }

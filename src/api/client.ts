@@ -29,11 +29,11 @@ export function getNetworkBuffer(): NetworkEvent[] {
 }
 
 async function getAccessToken(): Promise<string | null> {
-  return SecureStore.getItemAsync('access_token');
+  return SecureStore.getItemAsync('prepmax_access_token');
 }
 
 async function refreshTokens(): Promise<boolean> {
-  const refreshToken = await SecureStore.getItemAsync('refresh_token');
+  const refreshToken = await SecureStore.getItemAsync('prepmax_refresh_token');
   if (!refreshToken) return false;
 
   try {
@@ -44,8 +44,8 @@ async function refreshTokens(): Promise<boolean> {
     });
     if (!res.ok) return false;
     const data = await res.json() as { session: { access_token: string; refresh_token: string } };
-    await SecureStore.setItemAsync('access_token', data.session.access_token);
-    await SecureStore.setItemAsync('refresh_token', data.session.refresh_token);
+    await SecureStore.setItemAsync('prepmax_access_token', data.session.access_token);
+    await SecureStore.setItemAsync('prepmax_refresh_token', data.session.refresh_token);
     return true;
   } catch {
     return false;

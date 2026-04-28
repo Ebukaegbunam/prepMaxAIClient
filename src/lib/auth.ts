@@ -1,12 +1,16 @@
 import * as WebBrowser from 'expo-web-browser';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import * as Crypto from 'expo-crypto';
+import * as SecureStore from 'expo-secure-store';
 import { api } from '@/api/client';
 import { AuthResponseSchema } from '@/api/schemas';
 import { useSessionStore } from '@/state/session-store';
 import { logger } from '@/lib/logger';
 
 WebBrowser.maybeCompleteAuthSession();
+
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
+const PKCE_VERIFIER_KEY = 'prepmax_pkce_verifier';
 
 async function _persistSession(raw: unknown) {
   const parsed = AuthResponseSchema.parse(raw);
@@ -18,12 +22,45 @@ async function _persistSession(raw: unknown) {
   );
 }
 
+function _uint8ToBase64url(bytes: Uint8Array): string {
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+}
+
+async function _generatePKCE(): Promise<{ codeVerifier: string; codeChallenge: string }> {
+  const verifierBytes = Crypto.getRandomBytes(32);
+  const codeVerifier = _uint8ToBase64url(verifierBytes);
+  const base64Digest = await Crypto.digestStringAsync(
+    Crypto.CryptoDigestAlgorithm.SHA256,
+    codeVerifier,
+    { encoding: Crypto.CryptoEncoding.BASE64 },
+  );
+  const codeChallenge = base64Digest.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+  return { codeVerifier, codeChallenge };
+}
+
 export async function signInWithGoogle(): Promise<void> {
-  const data = await api.get<{ auth_url: string }>('auth/google/start');
-  const result = await WebBrowser.openAuthSessionAsync(data.auth_url, 'prepmax://auth/callback');
+  const { codeVerifier, codeChallenge } = await _generatePKCE();
+  await SecureStore.setItemAsync(PKCE_VERIFIER_KEY, codeVerifier);
+
+  const params = new URLSearchParams({
+    provider: 'google',
+    redirect_to: 'prepmax://auth/callback',
+    code_challenge: codeChallenge,
+    code_challenge_method: 'S256',
+    access_type: 'offline',
+    scopes: 'email profile',
+  });
+  const authUrl = `${SUPABASE_URL}/auth/v1/authorize?${params}`;
+
+  const result = await WebBrowser.openAuthSessionAsync(authUrl, 'prepmax://auth/callback');
 
   if (result.type !== 'success') {
     logger.info('Google sign-in cancelled', { type: result.type });
+    await SecureStore.deleteItemAsync(PKCE_VERIFIER_KEY);
     return;
   }
 
@@ -31,8 +68,9 @@ export async function signInWithGoogle(): Promise<void> {
   const code = url.searchParams.get('code');
   if (!code) throw new Error('No OAuth code in callback URL');
 
-  const resp = await api.post('auth/google/callback', { code });
+  const resp = await api.post('auth/google/callback', { code, code_verifier: codeVerifier });
   await _persistSession(resp);
+  await SecureStore.deleteItemAsync(PKCE_VERIFIER_KEY);
 }
 
 export async function signInWithApple(): Promise<void> {

@@ -1,10 +1,7 @@
 import { Redirect } from 'expo-router';
 
-// TODO(phase-auth): check tokens from expo-secure-store.
-// - No tokens → (auth)/sign-in
-// - Tokens present, no profile → (onboarding)/welcome
-// - Tokens + profile → (tabs)/home
-// For now, route straight to auth.
+// AuthGate in _layout.tsx handles all routing logic.
+// This just renders a redirect to kick the router; AuthGate will override it.
 export default function Entry() {
   return <Redirect href="/(auth)/sign-in" />;
 }
