@@ -87,23 +87,31 @@ export type ProfilePatch = z.infer<typeof ProfilePatchSchema>;
 
 export const PrepSchema = z.object({
   id: z.string().uuid(),
-  division: z.enum(['classic_physique', 'mens_physique', 'bikini', 'wellness']),
+  division: z.enum([
+    'classic_physique', 'men_physique', 'women_physique',
+    'bikini', 'mens_open', 'womens_figure',
+    // legacy / fallback
+    'mens_physique', 'wellness',
+  ]),
   prep_length_weeks: z.number().int().positive(),
   start_date: z.string(),
-  target_date: z.string(),
+  target_date: z.string().nullable(),
   target_competition_id: z.string().uuid().nullable(),
   status: z.enum(['active', 'completed', 'abandoned']),
   current_week: z.number().int(),
   current_phase: z.enum(['maintenance', 'cut', 'peak']),
-  starting_weight_kg: z.number().positive(),
-  target_weight_kg: z.number().positive(),
+  starting_weight_kg: z.number().nullable(),
+  target_weight_kg: z.number().nullable(),
   starting_bf_pct: z.number().min(0).max(100).nullable(),
   target_bf_pct: z.number().min(0).max(100).nullable(),
   created_at: z.string(),
 });
 
 export const PrepCreateSchema = z.object({
-  division: z.enum(['classic_physique', 'mens_physique', 'bikini', 'wellness']),
+  division: z.enum([
+    'classic_physique', 'men_physique', 'women_physique',
+    'bikini', 'mens_open', 'womens_figure',
+  ]),
   target_competition_id: z.string().uuid().optional(),
   start_date: z.string(),
   starting_weight_kg: z.number().positive(),
