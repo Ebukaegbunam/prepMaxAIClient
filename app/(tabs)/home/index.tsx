@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { View, Text, ScrollView, Pressable, RefreshControl, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -8,6 +9,7 @@ import { getDailyMacros, getWeeklyPlan } from '@/api/endpoints/meals';
 import { getWeightTrend } from '@/api/endpoints/progress';
 import { getProfile } from '@/api/endpoints/profile';
 import { StatBar } from '@/components/ui';
+import { NewPrepModal } from '@/components/NewPrepModal';
 import { colors, typography, radius, elevation } from '@/constants/theme';
 
 function today() { return new Date().toISOString().split('T')[0]; }
@@ -21,6 +23,7 @@ const PHASE_COLORS: Record<string, string> = {
 export default function HomeScreen() {
   const router = useRouter();
   const { user } = useSessionStore();
+  const [showNewPrep, setShowNewPrep] = useState(false);
 
   const { data: profile } = useQuery({ queryKey: ['profile'], queryFn: getProfile });
 
@@ -81,12 +84,13 @@ export default function HomeScreen() {
             Set your division, target weight, and phase split. We'll build your weekly plan.
           </Text>
           <Pressable
-            onPress={() => router.push('/new-prep')}
+            onPress={() => setShowNewPrep(true)}
             style={{ backgroundColor: colors.brand[500], borderRadius: radius.lg, paddingVertical: 16, paddingHorizontal: 40, ...elevation[2] }}
           >
             <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>Create prep →</Text>
           </Pressable>
         </View>
+        <NewPrepModal visible={showNewPrep} onClose={() => setShowNewPrep(false)} />
       </SafeAreaView>
     );
   }

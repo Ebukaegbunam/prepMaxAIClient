@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { getCurrentPrep } from '@/api/endpoints/preps';
+import { NewPrepModal } from '@/components/NewPrepModal';
 import { getWorkoutTemplate } from '@/api/endpoints/workouts';
 import { colors, typography, radius, elevation } from '@/constants/theme';
 
@@ -10,6 +12,7 @@ const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 export default function WorkoutsScreen() {
   const router = useRouter();
+  const [showNewPrep, setShowNewPrep] = useState(false);
   const todayDow = new Date().getDay();
 
   const { data: prep, isLoading: prepLoading, refetch } = useQuery({
@@ -47,12 +50,13 @@ export default function WorkoutsScreen() {
         </Text>
         {!prep && (
           <Pressable
-            onPress={() => router.push('/new-prep')}
+            onPress={() => setShowNewPrep(true)}
             style={{ backgroundColor: colors.brand[500], borderRadius: radius.lg, paddingVertical: 14, paddingHorizontal: 36 }}
           >
             <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>Create prep →</Text>
           </Pressable>
         )}
+        <NewPrepModal visible={showNewPrep} onClose={() => setShowNewPrep(false)} />
       </SafeAreaView>
     );
   }

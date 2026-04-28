@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getCurrentPrep } from '@/api/endpoints/preps';
+import { NewPrepModal } from '@/components/NewPrepModal';
 import { logWeight, getWeightTrend, createCheckIn, getCheckIns } from '@/api/endpoints/progress';
 import { colors, typography, radius, elevation } from '@/constants/theme';
 
@@ -30,8 +31,8 @@ function RatingRow({ label, value, onChange }: { label: string; value: number; o
 }
 
 export default function ProgressScreen() {
-  const router = useRouter();
   const qc = useQueryClient();
+  const [showNewPrep, setShowNewPrep] = useState(false);
   const [showWeightModal, setShowWeightModal] = useState(false);
   const [showCheckInModal, setShowCheckInModal] = useState(false);
   const [weightInput, setWeightInput] = useState('');
@@ -100,11 +101,12 @@ export default function ProgressScreen() {
           Create a prep to track weight, check-ins, and progress photos.
         </Text>
         <Pressable
-          onPress={() => router.push('/new-prep')}
+          onPress={() => setShowNewPrep(true)}
           style={{ backgroundColor: colors.brand[500], borderRadius: radius.lg, paddingVertical: 14, paddingHorizontal: 36 }}
         >
           <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>Create prep →</Text>
         </Pressable>
+        <NewPrepModal visible={showNewPrep} onClose={() => setShowNewPrep(false)} />
       </SafeAreaView>
     );
   }

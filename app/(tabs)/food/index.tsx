@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl, Modal, TextInput, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getCurrentPrep } from '@/api/endpoints/preps';
 import { getDailyMacros, getWeeklyPlan, logMeal } from '@/api/endpoints/meals';
 import { StatBar } from '@/components/ui';
+import { NewPrepModal } from '@/components/NewPrepModal';
 import { colors, typography, radius, elevation } from '@/constants/theme';
 
 function today() { return new Date().toISOString().split('T')[0]; }
@@ -32,8 +32,8 @@ interface LogForm {
 }
 
 export default function FoodScreen() {
-  const router = useRouter();
   const qc = useQueryClient();
+  const [showNewPrep, setShowNewPrep] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState<LogForm>({ slot: 'breakfast', name: '', calories: '', protein: '', carbs: '', fat: '' });
 
@@ -89,11 +89,12 @@ export default function FoodScreen() {
           Create a prep to unlock meal tracking and macro targets.
         </Text>
         <Pressable
-          onPress={() => router.push('/new-prep')}
+          onPress={() => setShowNewPrep(true)}
           style={{ backgroundColor: colors.brand[500], borderRadius: radius.lg, paddingVertical: 14, paddingHorizontal: 36 }}
         >
           <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>Create prep →</Text>
         </Pressable>
+        <NewPrepModal visible={showNewPrep} onClose={() => setShowNewPrep(false)} />
       </SafeAreaView>
     );
   }
