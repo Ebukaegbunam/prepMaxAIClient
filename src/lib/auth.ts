@@ -58,9 +58,11 @@ export async function signInWithGoogle(): Promise<void> {
     return;
   }
 
-  const qs = result.url.split('?')[1] ?? '';
-  const code = new URLSearchParams(qs).get('code');
-  if (!code) throw new Error('No OAuth code in callback URL');
+  // Supabase PKCE returns ?code=...; check fragment too as fallback
+  const qs = result.url.split('?')[1]?.split('#')[0] ?? '';
+  const fragment = result.url.split('#')[1] ?? '';
+  const code = new URLSearchParams(qs).get('code') ?? new URLSearchParams(fragment).get('code');
+  if (!code) throw new Error(`No OAuth code in callback URL: ${result.url}`);
 
   const resp = await api.post('auth/google/callback', { code, code_verifier: codeVerifier });
   await _persistSession(resp);
